@@ -285,6 +285,43 @@ BluesoundAccessory.prototype = {
 		.setCharacteristic(Characteristic.SerialNumber, "Bluesound Model No");
 
 		switch (this.service) {
+		case "Speaker":
+			this.speakerService = new Service.Speaker(this.name);			
+			switch (this.switchHandling) {
+				//Power Polling
+				case "yes" :
+					this.speakerService
+					.getCharacteristic(Characteristic.Mute)
+					.on('get', this.getPowerState.bind(this))
+					.on('set', this.setPowerState.bind(this));
+					break;
+				case "realtime":
+					this.speakerService
+					.getCharacteristic(Characteristic.Mute)
+					.on('get', function(callback) {callback(null, that.state)})
+					.on('set', this.setPowerState.bind(this));
+					break;
+				default:		
+					this.speakerService
+					.getCharacteristic(Characteristic.Mute)	
+					.on('set', this.setPowerState.bind(this));
+					break;
+			}
+			// volume Polling 
+			if (this.volumeHandling == "realtime") {
+				this.speakerService 
+				.addCharacteristic(new Characteristic.Volume())
+				.on('get', function(callback) {callback(null, that.currentlevel)})
+				.on('set', this.setVolume.bind(this));
+			} else if (this.volumeHandling == "yes") {
+				this.speakerService
+				.addCharacteristic(new Characteristic.Volume())
+				.on('get', this.getVolume.bind(this))
+				.on('set', this.setVolume.bind(this));							
+			}
+
+			return [informationService, this.speakerService];
+			break;		
 		case "Light":
 			this.lightbulbService = new Service.Lightbulb(this.name);			
 			switch (this.switchHandling) {
