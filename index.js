@@ -3,7 +3,7 @@ var request = require("request");
 var pollingtoevent = require('polling-to-event');
 var xml2js = require("xml2js");
 
-	module.exports = function(homebridge){
+	module.exports = function(homebridge) {
 		Service = homebridge.hap.Service;
 		Characteristic = homebridge.hap.Characteristic;
 		homebridge.registerAccessory("homebridge-bluesound", "Bluesound", BluesoundAccessory);
@@ -42,90 +42,92 @@ var xml2js = require("xml2js");
 		
 		// Status Polling, if you want to add additional services that don't use switch handling you can add something like this
 		// || (this.service=="Smoke" || this.service=="Motion"))
-		if (this.status_url && this.switchHandling == "realtime") {
+		//if (this.status_url && this.switchHandling == "realtime") {
+		if (this.status_url) {
 			var powerurl = this.status_url;
 			var statusemitter = pollingtoevent(function(done) {
 				that.httpRequest(powerurl, "", "GET", that.username, that.password, that.sendimmediately, function(error, response, body) {
-				if (error) {
-					that.log('HTTP get power function failed: %s', error.message);
-					callback(error);
-				} else {               				    
-					done(null, body);
-				}
-        		})
-		}, {longpolling:true,interval:300,longpollEventName:"statuspoll"});
+					if (error) {
+						that.log('HTTP get status function failed: %s', error.message);
+						callback(error);
+					} else {               				    
+						done(null, body);
+					}
+				})
+			}, {longpolling:true,interval:300,longpollEventName:"statuspoll"});
 
-		if (this.syncstatus_url){
-			var sync_url = this.syncstatus_url;
-			
-			that.httpRequest(sync_url, "", "GET", that.username, that.password, that.sendimmediately, function(error, response, body) {
-				if (error) {
-					that.log("HTTP SyncStatys function failed: %s", error.message);
-					calback(error);
+			if (this.syncstatus_url) {
+				var sync_url = this.syncstatus_url;
+
+				that.httpRequest(sync_url, "", "GET", that.username, that.password, that.sendimmediately, function(error, response, body) {
+					if (error) {
+						that.log("HTTP SyncStatys function failed: %s", error.message);
+						calback(error);
+					} else {
+						that.log("Getting Device information");
+						var xml = response.body;
+						var parser = new xml2js.Parser();
+						parser.parseString(xml, function(err, result) {
+							this.brand = result["SyncStatus"]["$"]["brand"];
+							this.model = result["SyncStatus"]["$"]["modelName"];
+							this.modelNo = result["SyncStatus"]["$"]["model"];
+							that.log("Device brand: " + this.brand);
+							that.log("Device model: " + this.model);
+							that.log("Device model no: "+ this.modelNo);	
+						});
+					}
+				});
+			};		
+
+			statusemitter.on("statuspoll", function(data) {       
+
+				var stringState = "";
+				var parser = new xml2js.Parser();
+				var xml = data;
+
+				parser.parseString(xml, function(err, result) {			
+					stringState = result["status"]["state"];
+				});
+
+				if (stringState == "play" || stringState == "stream") {
+					//that.log("Current stringState: " + stringState);
+					//that.log("State is Play or Stream");
+					binaryState = 1;
 				} else {
-					that.log("Getting Device information");
-					var xml = response.body;
-					var parser = new xml2js.Parser();
-					parser.parseString(xml, function(err, result){
-						this.brand = result["SyncStatus"]["$"]["brand"];
-						this.model = result["SyncStatus"]["$"]["modelName"];
-						this.modelNo = result["SyncStatus"]["$"]["model"];
-						that.log("Device brand: " + this.brand);
-						that.log("Device model: " + this.model);
-						that.log("Device model no: "+ this.modelNo);	
-					});
-				}
+					//that.log("Current State: " + stringState);
+					//that.log("State is Pause or Connecting");
+					binaryState = 0;
+				};
+
+				that.state = binaryState > 0;
+				that.log(that.service, "received power", that.status_url, "state is currently", binaryState);
+				if (that.lightbulbService) {
+					that.lightbulbService.getCharacteristic(Characteristic.On)
+					.setValue(that.state);
+				};
 			});
-		};		
-
-		statusemitter.on("statuspoll", function(data) {       
-        	
-			var stringState = "";
-			var parser = new xml2js.Parser();
-			var xml = data;
-
-			parser.parseString(xml, function(err, result){			
-				stringState = result["status"]["state"];
-			});
-
-			if (stringState == "play" || stringState == "stream") {
-				//that.log("Current stringState: " + stringState);
-				//that.log("State is Play or Stream");
-				binaryState = 1;
-			} else {
-				//that.log("Current State: " + stringState);
-				//that.log("State is Pause or Connecting");
-				binaryState = 0;
-			};
-
-			that.state = binaryState > 0;
-			that.log(that.service, "received power",that.status_url, "state is currently", binaryState);
-			if (that.speakerService) {
-				that.speakerService.getCharacteristic(Characteristic.On)
-				.setValue(that.state);
-			};
-		});
-	}
-	// Volume Polling
-	if (this.volumelvl_url && this.volumeHandling =="realtime") {
-		var volumeurl = this.volumelvl_url;
-		var levelemitter = pollingtoevent(function(done) {
-	        	that.httpRequest(volumeurl, "", "GET", that.username, that.password, that.sendimmediately, function(error, response, responseBody) {
-				if (error) {
-					that.log('HTTP get power function failed: %s', error.message);
-					return;
-				} else {               				    
-					done(null, responseBody);
-				}
-			}) // set longer polling as slider takes longer to set value
-		}, {longpolling:true,interval:2000,longpollEventName:"levelpoll"});
+		}
+		// Volume Polling
+		//if (this.volumelvl_url && this.volumeHandling =="realtime") {
+		if (this.volumelvl_url) {
+			var volumeurl = this.volumelvl_url;
+			var levelemitter = pollingtoevent(function(done) {
+				that.httpRequest(volumeurl, "", "GET", that.username, that.password, that.sendimmediately, function(error, response, responseBody) {
+					if (error) {
+						that.log('HTTP get volume function failed: %s', error.message);
+						return;
+					} else {               				    
+						done(null, responseBody);
+					}
+				}) // set longer polling as slider takes longer to set value
+			}, {longpolling:true,interval:2000,longpollEventName:"levelpoll"});
 
 			levelemitter.on("levelpoll", function(data) {  
 				that.currentlevel = parseInt(data);
 
-				if (that.speakerService) {				
-					that.log(that.service, "received volume",that.volumelvl_url, "level is currently", that.currentlevel); 		        
-					that.speakerService.getCharacteristic(Characteristic.Volume)
+				that.log(that.service, "received volume",that.volumelvl_url, "level is currently", that.currentlevel); 		        
+				if (that.lightbulbService) {				
+					that.lightbulbService.getCharacteristic(Characteristic.Brightness)
 					.setValue(that.currentlevel);
 				}        
 			});
@@ -156,8 +158,8 @@ BluesoundAccessory.prototype = {
 		var body;
 		
 		if (!this.play_url || !this.stop_url) {
-			this.log.warn("Ignoring request; No power url defined. Play_Url: " + this.play_url + " , Stop_Url: " + this.stop_url + " .");
-			callback(new Error("No power url defined."));
+			this.log.warn("Ignoring request; No play url defined. Play_Url: " + this.play_url + " , Stop_Url: " + this.stop_url + " .");
+			callback(new Error("No play url defined."));
 			return;
 		}
 		
@@ -219,8 +221,8 @@ BluesoundAccessory.prototype = {
 		var body;
 		
 		if (!this.play_url || !this.stop_url) {
-			this.log.warn("Ignoring request; No power url defined. Play_Url: " + this.play_url + " , Stop_Url: " + this.stop_url + " .");
-			callback(new Error("No power url defined."));
+			this.log.warn("Ignoring request; No play url defined. Play_Url: " + this.play_url + " , Stop_Url: " + this.stop_url + " .");
+			callback(new Error("No play url defined."));
 			return;
 		}
 		
@@ -257,7 +259,7 @@ BluesoundAccessory.prototype = {
 
 		this.httpRequest(url, "", "GET", this.username, this.password, this.sendimmediately, function(error, response, responseBody) {
 			if (error) {
-				this.log('HTTP get power function failed: %s', error.message);
+				this.log('HTTP get mute function failed: %s', error.message);
 				callback(error);
 			} else {
 				//var binaryState = parseInt(responseBody);
@@ -270,9 +272,9 @@ BluesoundAccessory.prototype = {
 					stringState = result["state"];
 				});
 				this.log("State is currently %s", stringState);
-				var powerOn = binaryState > 0;
+				var mute = binaryState > 0;
 				this.log("Mute state is currently %s", binaryState);
-				callback(null, powerOn);
+				callback(null, mute);
 			}
 		}.bind(this));
 	},
@@ -315,6 +317,7 @@ BluesoundAccessory.prototype = {
 			return;
 		}    
 	
+		level = 3;
 		var url = this.volume_url.replace("%b", level)
 		this.log("Setting volume to %s", level);
 	
