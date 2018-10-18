@@ -100,8 +100,8 @@ var xml2js = require("xml2js");
 
 			that.state = binaryState > 0;
 			that.log(that.service, "received power",that.status_url, "state is currently", binaryState);
-			if (that.lightbulbService) {
-				that.lightbulbService.getCharacteristic(Characteristic.On)
+			if (that.speakerService) {
+				that.speakerService.getCharacteristic(Characteristic.On)
 				.setValue(that.state);
 			};
 		});
@@ -123,9 +123,9 @@ var xml2js = require("xml2js");
 			levelemitter.on("levelpoll", function(data) {  
 				that.currentlevel = parseInt(data);
 
-				if (that.lightbulbService) {				
+				if (that.speakerService) {				
 					that.log(that.service, "received volume",that.volumelvl_url, "level is currently", that.currentlevel); 		        
-					that.lightbulbService.getCharacteristic(Characteristic.Brightness)
+					that.speakerService.getCharacteristic(Characteristic.Volume)
 					.setValue(that.currentlevel);
 				}        
 			});
@@ -280,9 +280,9 @@ BluesoundAccessory.prototype = {
 		var informationService = new Service.AccessoryInformation();
 		
 		informationService
-		.setCharacteristic(Characteristic.Manufacturer, "Bluesound")
-		.setCharacteristic(Characteristic.Model, "Bluesound Model")
-		.setCharacteristic(Characteristic.SerialNumber, "Bluesound Model No");
+		.setCharacteristic(Characteristic.Manufacturer, this.brand)
+		.setCharacteristic(Characteristic.Model, this.model)
+		.setCharacteristic(Characteristic.SerialNumber, this.modelNo);
 
 		switch (this.service) {
 		case "Speaker":
