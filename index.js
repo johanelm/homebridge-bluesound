@@ -132,7 +132,7 @@ var xml2js = require("xml2js");
 		}
 	}
 
-	BluesoundAccessory.prototype = {
+BluesoundAccessory.prototype = {
 
 	httpRequest: function(url, body, method, username, password, sendimmediately, callback) {
 		request({
@@ -306,45 +306,44 @@ var xml2js = require("xml2js");
 					.getCharacteristic(Characteristic.On)	
 					.on('set', this.setPowerState.bind(this));
 					break;
-				}
-				// volume Polling 
-				if (this.volumeHandling == "realtime") {
-					this.lightbulbService 
-					.addCharacteristic(new Characteristic.Brightness())
-					.on('get', function(callback) {callback(null, that.currentlevel)})
-					.on('set', this.setVolume.bind(this));
-				} else if (this.volumeHandling == "yes") {
-					this.lightbulbService
-					.addCharacteristic(new Characteristic.Brightness())
-					.on('get', this.getVolume.bind(this))
-					.on('set', this.setVolume.bind(this));							
-				}
-
-				return [informationService, this.lightbulbService];
-				break;		
 			}
-			case "Switch":
-				this.switchService = new Service.Switch(this.name);
-				switch (this.switchHandling) {
-					//Power Polling
-					case "yes":
-						this.switchService
-						.getCharacteristic(Characteristic.On)
-						.on('get', this.getPowerState.bind(this))
-						.on('set', this.setPowerState.bind(this));
-						break;
-					case "realtime":
-						this.switchService
-						.getCharacteristic(Characteristic.On)
-						.on('get', function(callback) {callback(null, that.state)})
-						.on('set', this.setPowerState.bind(this));
-						break;
-					default	:
-						this.switchService
-						.getCharacteristic(Characteristic.On)
-						.on('set', this.setPowerState.bind(this));
-						break;
-				}
+			// volume Polling 
+			if (this.volumeHandling == "realtime") {
+				this.lightbulbService 
+				.addCharacteristic(new Characteristic.Brightness())
+				.on('get', function(callback) {callback(null, that.currentlevel)})
+				.on('set', this.setVolume.bind(this));
+			} else if (this.volumeHandling == "yes") {
+				this.lightbulbService
+				.addCharacteristic(new Characteristic.Brightness())
+				.on('get', this.getVolume.bind(this))
+				.on('set', this.setVolume.bind(this));							
+			}
+
+			return [informationService, this.lightbulbService];
+			break;		
+		case "Switch":
+			this.switchService = new Service.Switch(this.name);
+			switch (this.switchHandling) {
+				//Power Polling
+				case "yes":
+					this.switchService
+					.getCharacteristic(Characteristic.On)
+					.on('get', this.getPowerState.bind(this))
+					.on('set', this.setPowerState.bind(this));
+					break;
+				case "realtime":
+					this.switchService
+					.getCharacteristic(Characteristic.On)
+					.on('get', function(callback) {callback(null, that.state)})
+					.on('set', this.setPowerState.bind(this));
+					break;
+				default	:
+					this.switchService
+					.getCharacteristic(Characteristic.On)
+					.on('set', this.setPowerState.bind(this));
+					break;
+			}
 			return [informationService, this.switchService];
 			break;
 		}
