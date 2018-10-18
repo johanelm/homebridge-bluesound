@@ -214,6 +214,69 @@ BluesoundAccessory.prototype = {
 		}.bind(this));
 	},
 
+	setMuteState: function(mute, callback) {
+		var url;
+		var body;
+		
+		if (!this.play_url || !this.stop_url) {
+			this.log.warn("Ignoring request; No power url defined. Play_Url: " + this.play_url + " , Stop_Url: " + this.stop_url + " .");
+			callback(new Error("No power url defined."));
+			return;
+		}
+		
+		if (!mute) {
+			url = this.play_url;
+			body = this.play_body;
+			this.log("Setting state to Play");
+		} else {
+			url = this.stop_url;
+			body = this.stop_body;
+			this.log("Setting state to Pause");
+		}
+		
+		this.httpRequest(url, body, this.http_method, this.username, this.password, this.sendimmediately, function(error, response, responseBody) {
+			if (error) {
+				this.log('HTTP set mute function failed: %s', error.message);
+				callback(error);
+			} else {
+				this.log('HTTP set mute function succeeded!');
+				callback();
+			}
+		}.bind(this));
+	},
+  
+	getMuteState: function(callback) {
+		if (!this.status_url) {
+			this.log.warn("Ignoring request; No status url defined.");
+			callback(new Error("No status url defined."));
+			return;
+		}
+
+		var url = this.status_url;
+		this.log("Getting mute state");
+
+		this.httpRequest(url, "", "GET", this.username, this.password, this.sendimmediately, function(error, response, responseBody) {
+			if (error) {
+				this.log('HTTP get power function failed: %s', error.message);
+				callback(error);
+			} else {
+				//var binaryState = parseInt(responseBody);
+				var binaryState = 0;
+				var stringState = "";
+				var parser = new xml2js.Parser();
+				var xml = response.body;
+				parser.parseString(xml, function(err, result) {
+					console.dir(JSON.stringify(result));
+					stringState = result["state"];
+				});
+				this.log("State is currently %s", stringState);
+				var powerOn = binaryState > 0;
+				this.log("Mute state is currently %s", binaryState);
+				callback(null, powerOn);
+			}
+		}.bind(this));
+	},
+
 	getVolume: function(callback) {
 		if (!this.volumelvl_url) {
 			this.log.warn("Ignoring request; No volume level url defined.");
@@ -288,23 +351,23 @@ BluesoundAccessory.prototype = {
 		case "Speaker":
 			this.speakerService = new Service.Speaker(this.name);			
 			switch (this.switchHandling) {
-				//Power Polling
+				//Mute Polling
 				case "yes" :
 					this.speakerService
 					.getCharacteristic(Characteristic.Mute)
-					.on('get', this.getPowerState.bind(this))
-					.on('set', this.setPowerState.bind(this));
+					.on('get', this.getMuteState.bind(this))
+					.on('set', this.setMuteState.bind(this));
 					break;
 				case "realtime":
 					this.speakerService
 					.getCharacteristic(Characteristic.Mute)
 					.on('get', function(callback) {callback(null, that.state)})
-					.on('set', this.setPowerState.bind(this));
+					.on('set', this.setMuteState.bind(this));
 					break;
 				default:		
 					this.speakerService
 					.getCharacteristic(Characteristic.Mute)	
-					.on('set', this.setPowerState.bind(this));
+					.on('set', this.setMuteState.bind(this));
 					break;
 			}
 			// volume Polling 
