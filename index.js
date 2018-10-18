@@ -31,9 +31,9 @@ var xml2js = require("xml2js");
 		this.username           = config["username"] 	  	 	 	|| "";
 		this.password           = config["password"] 	  	 	 	|| "";
 		this.sendimmediately    = config["sendimmediately"] 	 	|| "";
-		this.service            = "Light";						//config["service"] || "Switch";
+		this.service            = config["service"] || "Light";
 		this.name               = config["name"];
-		this.volumeHandling     = "Yes";						//config["volumeHandling"] || "no";
+		this.volumeHandling     = config["volumeHandling"] || "yes";
 		this.switchHandling 	= config["switchHandling"] 		 	|| "no";
 
 		//realtime polling info
@@ -93,7 +93,7 @@ var xml2js = require("xml2js");
 			
 		});
 
-		if (stringState == "play" || straingState == "stream") {
+		if (stringState == "play" || stringState == "stream") {
 			//that.log("Current stringState: " + stringState);
 			//that.log("State is Play or Stream");
 			binaryState = 1;
@@ -330,6 +330,31 @@ var xml2js = require("xml2js");
 	
 			return [informationService, this.lightbulbService];
 			break;		
+		}
+		case "Switch":
+			this.switchService = new Service.Switch(this.name);
+			switch (this.switchHandling) {
+				//Power Polling
+				case "yes":
+					this.switchService
+					.getCharacteristic(Characteristic.On)
+					.on('get', this.getPowerState.bind(this))
+					.on('set', this.setPowerState.bind(this));
+					break;
+				case "realtime":
+					this.switchService
+					.getCharacteristic(Characteristic.On)
+					.on('get', function(callback) {callback(null, that.state)})
+					.on('set', this.setPowerState.bind(this));
+					break;
+				default	:
+					this.switchService
+					.getCharacteristic(Characteristic.On)
+					.on('set', this.setPowerState.bind(this));
+					break;
+				}
+			return [informationService, this.switchService];
+			break;
 		}
 	}
 };
